@@ -259,6 +259,8 @@ pub enum PropertyCondition {
     Formula(FormulaCondition),
 }
 
+pub type TimestampFilterProperty = DatabaseSortTimestamp;
+
 #[derive(Serialize, Debug, Eq, PartialEq, Clone)]
 #[serde(untagged)]
 pub enum FilterCondition {
@@ -268,10 +270,9 @@ pub enum FilterCondition {
         condition: PropertyCondition,
     },
     Timestamp {
-        timestamp: DatabaseSortTimestamp,
+        timestamp: TimestampFilterProperty,
         #[serde(flatten)]
         condition: PropertyTimestampCondition,
-
     },
     /// Returns pages when **all** of the filters inside the provided vector match.
     And { and: Vec<FilterCondition> },
@@ -317,10 +318,7 @@ pub struct DatabaseQuery {
 }
 
 impl Pageable for DatabaseQuery {
-    fn start_from(
-        self,
-        starting_point: Option<PagingCursor>,
-    ) -> Self {
+    fn start_from(self, starting_point: Option<PagingCursor>) -> Self {
         DatabaseQuery {
             paging: Some(Paging {
                 start_cursor: starting_point,
