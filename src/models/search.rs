@@ -247,7 +247,7 @@ pub enum FormulaCondition {
 #[derive(Serialize, Debug, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum PropertyCondition {
-    Text(TextCondition),
+    RichText(TextCondition),
     Number(NumberCondition),
     Checkbox(CheckboxCondition),
     Select(SelectCondition),
@@ -257,38 +257,28 @@ pub enum PropertyCondition {
     Files(FilesCondition),
     Relation(RelationCondition),
     Formula(FormulaCondition),
-    /// Returns pages when **any** of the filters inside the provided vector match.
-    Or(Vec<PropertyCondition>),
+}
+
+#[derive(Serialize, Debug, Eq, PartialEq, Clone)]
+#[serde(untagged)]
+pub enum FilterCondition {
+    Property {
+        property: String,
+        #[serde(flatten)]
+        condition: PropertyCondition,
+    },
+    Timestamp {
+        timestamp: DatabaseSortTimestamp,
+        #[serde(flatten)]
+        condition: PropertyTimestampCondition,
+
+    },
     /// Returns pages when **all** of the filters inside the provided vector match.
-    And(Vec<PropertyCondition>),
+    And { and: Vec<FilterCondition> },
+    /// Returns pages when **any** of the filters inside the provided vector match.
+    Or { or: Vec<FilterCondition> },
 }
 
-#[derive(Serialize, Debug, Eq, PartialEq, Clone)]
-pub struct FilterCondition {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(flatten)]
-    
-
-    // Support FilterTimestampCondition <https://developers.notion.com/reference/post-database-query-filter#timestamp-filter-object>
-    pub property_condtion: Option<FilterPropertyCondition>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(flatten)]
-    pub timestamp_condition: Option<FilterTimestampCondition>,
-}
-
-#[derive(Serialize, Debug, Eq, PartialEq, Clone)]
-pub struct FilterPropertyCondition {
-    pub property: String,
-    #[serde(flatten)]
-    pub condition: PropertyCondition,
-}
-
-#[derive(Serialize, Debug, Eq, PartialEq, Clone)]
-pub struct FilterTimestampCondition {
-    pub timestamp: DatabaseSortTimestamp,
-    #[serde(flatten)]
-    pub condition: PropertyTimestampCondition,
-}
 #[derive(Serialize, Debug, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum PropertyTimestampCondition {
@@ -327,7 +317,10 @@ pub struct DatabaseQuery {
 }
 
 impl Pageable for DatabaseQuery {
-    fn start_from(self, starting_point: Option<PagingCursor>) -> Self {
+    fn start_from(
+        self,
+        starting_point: Option<PagingCursor>,
+    ) -> Self {
         DatabaseQuery {
             paging: Some(Paging {
                 start_cursor: starting_point,
@@ -399,30 +392,35 @@ impl From<NotionSearch> for SearchRequest {
 #[cfg(test)]
 mod tests {
     mod text_filters {
-        use crate::models::search::PropertyCondition::Text;
-        use crate::models::search::{FilterCondition, TextCondition};
+        use crate::models::search::PropertyCondition::{Checkbox, Number, RichText, Select};
+        use crate::models::search::{
+            CheckboxCondition, FilterCondition, NumberCondition, SelectCondition, TextCondition,
+        };
         use serde_json::json;
 
         #[test]
         fn text_property_equals() -> Result<(), Box<dyn std::error::Error>> {
-            let json = serde_json::to_value(&FilterCondition {
+            let json = serde_json::to_value(&FilterCondition::Property {
                 property: "Name".to_string(),
-                condition: Text(TextCondition::Equals("Test".to_string())),
+                condition: RichText(TextCondition::Equals("Test".to_string())),
             })?;
-            assert_eq!(json, json!({"property":"Name","text":{"equals":"Test"}}));
+            assert_eq!(
+                json,
+                json!({"property":"Name","rich_text":{"equals":"Test"}})
+            );
 
             Ok(())
         }
 
         #[test]
         fn text_property_contains() -> Result<(), Box<dyn std::error::Error>> {
-            let json = serde_json::to_value(&FilterCondition {
+            let json = serde_json::to_value(&FilterCondition::Property {
                 property: "Name".to_string(),
-                condition: Text(TextCondition::Contains("Test".to_string())),
+                condition: RichText(TextCondition::Contains("Test".to_string())),
             })?;
             assert_eq!(
                 dbg!(json),
-                json!({"property":"Name","text":{"contains":"Test"}})
+                json!({"property":"Name","rich_text":{"contains":"Test"}})
             );
 
             Ok(())
@@ -430,13 +428,13 @@ mod tests {
 
         #[test]
         fn text_property_is_empty() -> Result<(), Box<dyn std::error::Error>> {
-            let json = serde_json::to_value(&FilterCondition {
+            let json = serde_json::to_value(&FilterCondition::Property {
                 property: "Name".to_string(),
-                condition: Text(TextCondition::IsEmpty),
+                condition: RichText(TextCondition::IsEmpty),
             })?;
             assert_eq!(
                 dbg!(json),
-                json!({"property":"Name","text":{"is_empty":true}})
+                json!({"property":"Name","rich_text":{"is_empty":true}})
             );
 
             Ok(())
@@ -444,13 +442,78 @@ mod tests {
 
         #[test]
         fn text_property_is_not_empty() -> Result<(), Box<dyn std::error::Error>> {
-            let json = serde_json::to_value(&FilterCondition {
+            let json = serde_json::to_value(&FilterCondition::Property {
                 property: "Name".to_string(),
-                condition: Text(TextCondition::IsNotEmpty),
+                condition: RichText(TextCondition::IsNotEmpty),
             })?;
             assert_eq!(
                 dbg!(json),
-                json!({"property":"Name","text":{"is_not_empty":true}})
+                json!({"property":"Name","rich_text":{"is_not_empty":true}})
+            );
+
+            Ok(())
+        }
+
+        #[test]
+        fn compound_query_and() -> Result<(), Box<dyn std::error::Error>> {
+            let json = serde_json::to_value(&FilterCondition::And {
+                and: vec![
+                    FilterCondition::Property {
+                        property: "Seen".to_string(),
+                        condition: Checkbox(CheckboxCondition::Equals(false)),
+                    },
+                    FilterCondition::Property {
+                        property: "Yearly visitor count".to_string(),
+                        condition: Number(NumberCondition::GreaterThan(serde_json::Number::from(
+                            1000000,
+                        ))),
+                    },
+                ],
+            })?;
+            assert_eq!(
+                dbg!(json),
+                json!({"and":[
+                    {"property":"Seen","checkbox":{"equals":false}},
+                    {"property":"Yearly visitor count","number":{"greater_than":1000000}}
+                ]})
+            );
+
+            Ok(())
+        }
+
+        #[test]
+        fn compound_query_or() -> Result<(), Box<dyn std::error::Error>> {
+            let json = serde_json::to_value(&FilterCondition::Or {
+                or: vec![
+                    FilterCondition::Property {
+                        property: "Description".to_string(),
+                        condition: RichText(TextCondition::Contains("fish".to_string())),
+                    },
+                    FilterCondition::And {
+                        and: vec![
+                            FilterCondition::Property {
+                                property: "Food group".to_string(),
+                                condition: Select(SelectCondition::Equals(
+                                    "🥦Vegetable".to_string(),
+                                )),
+                            },
+                            FilterCondition::Property {
+                                property: "Is protein rich?".to_string(),
+                                condition: Checkbox(CheckboxCondition::Equals(true)),
+                            },
+                        ],
+                    },
+                ],
+            })?;
+            assert_eq!(
+                dbg!(json),
+                json!({"or":[
+                    {"property":"Description","rich_text":{"contains":"fish"}},
+                    {"and":[
+                        {"property":"Food group","select":{"equals":"🥦Vegetable"}},
+                        {"property":"Is protein rich?","checkbox":{"equals":true}}
+                    ]}
+                ]})
             );
 
             Ok(())

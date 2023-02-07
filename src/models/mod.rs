@@ -173,11 +173,17 @@ impl Properties {
     pub fn title(&self) -> Option<String> {
         self.properties.values().find_map(|p| match p {
             PropertyValue::Title { title, .. } => {
-                Some(title.into_iter().map(|t| t.plain_text()).collect())
+                Some(title.iter().map(|t| t.plain_text()).collect())
             }
             _ => None,
         })
     }
+}
+
+#[derive(Serialize, Debug, Eq, PartialEq)]
+pub struct PageCreateRequest {
+    pub parent: Parent,
+    pub properties: Properties,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
