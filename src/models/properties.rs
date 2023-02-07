@@ -87,6 +87,9 @@ pub struct Relation {
     pub synced_property_id: Option<PropertyId>,
 }
 
+
+// 2023-02-07 <https://developers.notion.com/reference/property-object#rollup>
+// below list is not complete.
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Copy, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum RollupFunction {
@@ -104,6 +107,7 @@ pub enum RollupFunction {
     Max,
     Range,
     ShowOriginal,
+    DateRange,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
@@ -233,7 +237,7 @@ pub struct RelationValue {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RollupValue {
     Number { number: Option<Number> },
-    Date { date: Option<DateTime<Utc>> },
+    Date { date: Option<DateValue> },
     Array { array: Vec<RollupPropertyValue> },
 }
 
