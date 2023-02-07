@@ -1,7 +1,9 @@
 use crate::models::properties::DateValue;
 use crate::models::users::User;
-use crate::{Database, Page};
+use crate::Database;
 use serde::{Deserialize, Serialize};
+
+use super::WeakPage;
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Copy, Clone)]
 #[serde(rename_all = "snake_case")]
@@ -68,8 +70,11 @@ pub enum MentionObject {
         user: User,
     },
     // TODO: need to add tests
+    // Page mention does not contain full Page structure, but just id
+    // https://developers.notion.com/reference/rich-text#page-mention-type-object
+    // 2023-02-07
     Page {
-        page: Page,
+        page: WeakPage,
     },
     // TODO: need to add tests
     Database {
