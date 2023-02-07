@@ -265,9 +265,35 @@ pub enum PropertyCondition {
 
 #[derive(Serialize, Debug, Eq, PartialEq, Clone)]
 pub struct FilterCondition {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(flatten)]
+    
+
+    // Support FilterTimestampCondition <https://developers.notion.com/reference/post-database-query-filter#timestamp-filter-object>
+    pub property_condtion: Option<FilterPropertyCondition>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(flatten)]
+    pub timestamp_condition: Option<FilterTimestampCondition>,
+}
+
+#[derive(Serialize, Debug, Eq, PartialEq, Clone)]
+pub struct FilterPropertyCondition {
     pub property: String,
     #[serde(flatten)]
     pub condition: PropertyCondition,
+}
+
+#[derive(Serialize, Debug, Eq, PartialEq, Clone)]
+pub struct FilterTimestampCondition {
+    pub timestamp: DatabaseSortTimestamp,
+    #[serde(flatten)]
+    pub condition: PropertyTimestampCondition,
+}
+#[derive(Serialize, Debug, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum PropertyTimestampCondition {
+    CreatedTime(DateCondition),
+    LastEditedTime(DateCondition),
 }
 
 #[derive(Serialize, Debug, Eq, PartialEq, Hash, Copy, Clone)]
