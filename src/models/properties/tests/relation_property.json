@@ -1,0 +1,10 @@
+{
+    "id": "dummy_id",
+    "type": "relation",
+    "relation": [
+       {
+         "id": "9f4b3f27-f6f1-4d83-bce5-06d131e354d3"
+       } 
+    ],
+    "has_more": false
+}

@@ -3,7 +3,7 @@ use crate::models::users::User;
 use crate::Database;
 use serde::{Deserialize, Serialize};
 
-use super::WeakPage;
+use super::properties::RelationValue;
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Copy, Clone)]
 #[serde(rename_all = "snake_case")]
@@ -76,7 +76,7 @@ pub enum MentionObject {
     // https://developers.notion.com/reference/rich-text#page-mention-type-object
     // 2023-02-07
     Page {
-        page: WeakPage,
+        page: RelationValue,
     },
     // TODO: need to add tests
     Database {

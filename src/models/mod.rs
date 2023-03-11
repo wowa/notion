@@ -187,11 +187,6 @@ pub struct PageCreateRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
-pub struct WeakPage {
-    pub id: PageId
-}
-
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct Page {
     pub id: PageId,
     /// Date and time when this page was created.

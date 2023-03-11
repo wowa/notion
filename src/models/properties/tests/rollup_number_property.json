@@ -1,0 +1,9 @@
+{
+    "id": "WD%3Cs",
+    "type": "rollup",
+    "rollup": {
+      "type": "number",
+      "number": 42,
+      "function": "sum"
+    }
+  }
