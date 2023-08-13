@@ -13,9 +13,10 @@ pub struct Person {
     pub email: String,
 }
 
+/// TODO not finished implementation of bot option
+/// <https://developers.notion.com/reference/user#bots>
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct Bot {
-    pub email: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]

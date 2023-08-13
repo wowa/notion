@@ -1,7 +1,9 @@
+use std::cmp::Ordering;
+
 use crate::models::text::RichText;
 use crate::models::users::User;
 
-use super::{DateTime, Number, Utc};
+use super::{DateTime, FileObject, Number, Utc};
 use crate::ids::{DatabaseId, PageId, PropertyId};
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
@@ -234,6 +236,29 @@ pub enum DateOrDateTime {
     DateTime(DateTime<Utc>),
 }
 
+impl DateOrDateTime {
+    pub fn as_date(&self) -> Option<&NaiveDate> {
+        match self {
+            DateOrDateTime::Date(date) => Some(date),
+            _ => None,
+        }
+    }
+    pub fn as_date_time(&self) -> Option<DateTime<Utc>> {
+        match self {
+            DateOrDateTime::Date(date) => Some(
+                date.clone()
+                    .and_hms_opt(0, 0, 0)
+                    .unwrap()
+                    .and_local_timezone(Utc)
+                    .unwrap(),
+            ),
+            DateOrDateTime::DateTime(date_time) => Some(*date_time),
+            _ => None,
+        }
+    }
+}
+
+/// <https://developers.notion.com/reference/property-value-object#date-property-values>
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct DateValue {
     pub start: DateOrDateTime,
@@ -261,26 +286,47 @@ pub struct RelationValue {
     pub id: PageId,
 }
 
+/// Notion API reference documentation is somewhat misleading
+/// Rollup property value is defined on "Property values" <https://developers.notion.com/reference/page-property-values#rollup>
+/// and "Page property values" <https://developers.notion.com/reference/page-property-values#rollup>
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RollupValue {
-    Number { number: Option<Number> },
-    Date { date: Option<DateValue> },
-    Array { array: Vec<RollupPropertyValue> },
+    /// According to <https://developers.notion.com/reference/property-value-object#rollup-property-values>
+    /// One another option is: String
+    /// String { string: Option<String> }
+    Number {
+        number: Option<Number>,
+        function: RollupFunction,
+    },
+
+    /// <https://developers.notion.com/reference/property-value-object#date-rollup-property-values>
+    /// "Date rollup property values contain a date property value within the date property."
+    Date {
+        date: Option<DateValue>,
+        function: RollupFunction,
+    },
+    Array {
+        array: Vec<RollupPropertyValue>,
+        function: RollupFunction,
+    },
 }
 
+/// FileReference, a subject of File property value, augments FileObject with name String
+/// <https://developers.notion.com/reference/page-property-values#files>
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct FileReference {
     pub name: String,
-    pub url: String,
-    pub mime_type: String,
+    #[serde(flatten)]
+    pub file_object: FileObject,
 }
 
+/// <https://developers.notion.com/reference/page-property-values>
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum PropertyValue {
-    // <https://developers.notion.com/reference/property-object#title-configuration>
+    /// <https://developers.notion.com/reference/page-property-values#title>
     Title {
         id: PropertyId,
         title: Vec<RichText>,
@@ -291,64 +337,75 @@ pub enum PropertyValue {
         id: PropertyId,
         rich_text: Vec<RichText>,
     },
-    /// <https://developers.notion.com/reference/property-object#number-configuration>
+
+    /// <https://developers.notion.com/reference/page-property-values#number>
     Number {
         id: PropertyId,
         number: Option<Number>,
     },
-    /// <https://developers.notion.com/reference/property-object#select-configuration>
+
+    /// <https://developers.notion.com/reference/page-property-values#select>
     Select {
         id: PropertyId,
         select: Option<SelectedValue>,
     },
+
     /// <https://developers.notion.com/reference/property-object#status-configuration>
     Status {
         id: PropertyId,
         status: Option<SelectedValue>,
     },
-    /// <https://developers.notion.com/reference/property-object#multi-select-configuration>
+
+    /// <https://developers.notion.com/reference/page-property-values#multi-select>
     MultiSelect {
         id: PropertyId,
-        multi_select: Option<Vec<SelectedValue>>,
+        multi_select: Vec<SelectedValue>,
     },
-    /// <https://developers.notion.com/reference/property-object#date-configuration>
+    /// <https://developers.notion.com/reference/page-property-values#date>
     Date {
         id: PropertyId,
         date: Option<DateValue>,
     },
-    /// <https://developers.notion.com/reference/property-object#formula-configuration>
+
+    /// <https://developers.notion.com/reference/page-property-values#formula>
     Formula {
         id: PropertyId,
         formula: FormulaResultValue,
     },
-    /// <https://developers.notion.com/reference/property-object#relation-configuration>
+
+    /// <https://developers.notion.com/reference/page-property-values#relation>
     /// It is actually an array of relations
     Relation {
         id: PropertyId,
-        relation: Option<Vec<RelationValue>>,
+        has_more: bool, // added according to reference, but not sure if this not cause conflicts
+        relation: Vec<RelationValue>,
     },
+
     /// <https://developers.notion.com/reference/property-object#rollup-configuration>
-    Rollup {
-        id: PropertyId,
-        rollup: Option<RollupValue>,
-    },
-    /// <https://developers.notion.com/reference/property-object#people-configuration>
+    Rollup { id: PropertyId, rollup: RollupValue },
+
+    /// <https://developers.notion.com/reference/page-property-values#people>
     People { id: PropertyId, people: Vec<User> },
-    /// <https://developers.notion.com/reference/property-object#files-configuration>
+
+    /// <https://developers.notion.com/reference/page-property-values#files>
     Files {
         id: PropertyId,
-        files: Option<Vec<FileReference>>,
+        files: Vec<FileReference>,
     },
-    /// <https://developers.notion.com/reference/property-object#checkbox-configuration>
+
+    /// <https://developers.notion.com/reference/page-property-values#checkbox>
     Checkbox { id: PropertyId, checkbox: bool },
+
     /// <https://developers.notion.com/reference/property-object#url-configuration>
     Url { id: PropertyId, url: Option<String> },
-    /// <https://developers.notion.com/reference/property-object#email-configuration>
+
+    /// <https://developers.notion.com/reference/page-property-values#email>
     Email {
         id: PropertyId,
         email: Option<String>,
     },
-    /// <https://developers.notion.com/reference/property-object#phone-number-configuration>
+
+    /// <https://developers.notion.com/reference/page-property-values#phone-number>
     PhoneNumber {
         id: PropertyId,
         phone_number: String,
@@ -372,6 +429,27 @@ pub enum PropertyValue {
     },
 }
 
+impl PartialOrd for PropertyValue {
+    fn partial_cmp(
+        &self,
+        other: &Self,
+    ) -> Option<std::cmp::Ordering> {
+        match (self, other) {
+            (
+                &PropertyValue::Date { ref date, .. },
+                &PropertyValue::Date {
+                    date: ref date2, ..
+                },
+            ) => Some(Ordering::Equal),
+            _ => None,
+        }
+    }
+}
+
+/// TODO This is completely wrong.
+/// rename to RollupArrayValueProperties
+/// implement according to https://developers.notion.com/reference/page-property-values#rollup
+///
 /// <https://developers.notion.com/reference/page#rollup-property-value-element>
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 #[serde(tag = "type")]
@@ -382,6 +460,13 @@ pub enum RollupPropertyValue {
     Text {
         rich_text: Vec<RichText>,
     },
+
+    /// according to notion-sdk-js code
+    #[serde(rename = "rich_text")]
+    Title {
+        rich_text: Vec<RichText>,
+    },
+
     /// <https://developers.notion.com/reference/page#number-property-values>
     Number {
         number: Option<Number>,
@@ -403,10 +488,10 @@ pub enum RollupPropertyValue {
     Formula {
         formula: FormulaResultValue,
     },
-    /// <https://developers.notion.com/reference/page#relation-property-values>
     /// It is actually an array of relations
+    /// <https://developers.notion.com/reference/page-property-values#relation>
     Relation {
-        relation: Option<Vec<RelationValue>>,
+        relation: Vec<RelationValue>,
     },
     /// <https://developers.notion.com/reference/page#rollup-property-values>
     Rollup {

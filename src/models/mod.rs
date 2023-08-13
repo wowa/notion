@@ -186,6 +186,11 @@ pub struct PageCreateRequest {
     pub properties: Properties,
 }
 
+#[derive(Serialize, Debug, Eq, PartialEq)]
+pub struct PageUpdateRequest {
+    pub properties: Properties,
+}
+
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct Page {
     pub id: PageId,
@@ -395,12 +400,12 @@ pub struct TableOfContents {
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct ColumnListFields {
-    pub children: Vec<Block>,
+    pub children: Option<Vec<Block>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct ColumnFields {
-    pub children: Vec<Block>,
+    pub children: Option<Vec<Block>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
@@ -411,7 +416,7 @@ pub struct LinkPreviewFields {
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct TemplateFields {
     pub rich_text: Vec<RichText>,
-    pub children: Vec<Block>,
+    pub children: Option<Vec<Block>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
@@ -430,7 +435,7 @@ pub struct SyncedFromObject {
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct SyncedBlockFields {
     pub synced_from: Option<SyncedFromObject>,
-    pub children: Vec<Block>,
+    pub children: Option<Vec<Block>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
@@ -438,12 +443,12 @@ pub struct TableFields {
     pub table_width: u64,
     pub has_column_header: bool,
     pub has_row_header: bool,
-    pub children: Vec<Block>,
+    pub children: Option<Vec<Block>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 pub struct TableRowFields {
-    pub cells: Vec<RichText>,
+    pub cells: Vec<Vec<RichText>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
@@ -613,6 +618,49 @@ pub enum Block {
     },
     #[serde(other)]
     Unknown,
+}
+
+impl Block {
+    pub fn has_children(&self) -> bool {
+        use Block::*;
+        match self {
+            Paragraph { common, .. }
+            | Heading1 { common, .. }
+            | Heading2 { common, .. }
+            | Heading3 { common, .. }
+            | Callout { common, .. }
+            | Quote { common, .. }
+            | BulletedListItem { common, .. }
+            | NumberedListItem { common, .. }
+            | ToDo { common, .. }
+            | Toggle { common, .. }
+            | Code { common, .. }
+            | ChildPage { common, .. }
+            | ChildDatabase { common, .. }
+            | Embed { common, .. }
+            | Image { common, .. }
+            | Video { common, .. }
+            | File { common, .. }
+            | Pdf { common, .. }
+            | Bookmark { common, .. }
+            | Equation { common, .. }
+            | Divider { common, .. }
+            | TableOfContents { common, .. }
+            | Breadcrumb { common, .. }
+            | ColumnList { common, .. }
+            | Column { common, .. }
+            | LinkPreview { common, .. }
+            | Template { common, .. }
+            | LinkToPage { common, .. }
+            | SyncedBlock { common, .. }
+            | Table { common, .. }
+            | TableRow { common, .. }
+            | Unsupported { common, .. } => common.has_children,
+            Unknown => {
+                panic!("Trying to reference identifier for unknown block!")
+            }
+        }
+    }
 }
 
 impl AsIdentifier<BlockId> for Block {

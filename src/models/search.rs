@@ -261,7 +261,7 @@ pub enum PropertyCondition {
 
 pub type TimestampFilterProperty = DatabaseSortTimestamp;
 
-#[derive(Serialize, Debug, Eq, PartialEq, Clone)]
+#[derive(Serialize, Debug, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum FilterCondition {
     Property {
@@ -270,7 +270,6 @@ pub enum FilterCondition {
         condition: PropertyCondition,
     },
     Timestamp {
-        timestamp: TimestampFilterProperty,
         #[serde(flatten)]
         condition: PropertyTimestampCondition,
     },
@@ -280,11 +279,40 @@ pub enum FilterCondition {
     Or { or: Vec<FilterCondition> },
 }
 
-#[derive(Serialize, Debug, Eq, PartialEq, Clone)]
+
+impl FilterCondition {
+    pub fn created_time(date_condition :DateCondition) -> FilterCondition {
+        FilterCondition::Timestamp { condition:  PropertyTimestampCondition::CreatedTime { created_time: date_condition }
+         }
+    }
+}
+
+impl Clone for FilterCondition {
+    fn clone(&self)  -> Self {
+        match self {
+            FilterCondition::Property { property, condition } => FilterCondition::Property { property: property.clone(), condition: condition.clone() },
+            FilterCondition::Timestamp { condition } => FilterCondition::Timestamp { condition: condition.clone() },
+            FilterCondition::And { and } => todo!(),
+            FilterCondition::Or { or } => todo!(),
+        }
+    }
+}
+
+#[derive(Serialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
+#[serde(tag = "timestamp")]
 pub enum PropertyTimestampCondition {
-    CreatedTime(DateCondition),
-    LastEditedTime(DateCondition),
+    CreatedTime{created_time: DateCondition},
+    LastEditedTime{last_edited_time: DateCondition},
+}
+
+impl PropertyTimestampCondition {
+    pub fn clone(&self) -> Self {
+        match self {
+            PropertyTimestampCondition::CreatedTime { created_time } => PropertyTimestampCondition::CreatedTime { created_time: created_time.clone() },
+            PropertyTimestampCondition::LastEditedTime { last_edited_time } => PropertyTimestampCondition::LastEditedTime { last_edited_time: last_edited_time.clone() },
+        }
+    }
 }
 
 #[derive(Serialize, Debug, Eq, PartialEq, Hash, Copy, Clone)]
@@ -295,16 +323,22 @@ pub enum DatabaseSortTimestamp {
 }
 
 #[derive(Serialize, Debug, Eq, PartialEq, Clone)]
-pub struct DatabaseSort {
-    // Todo: Should property and timestamp be mutually exclusive? (i.e a flattened enum?)
-    //  the documentation is not clear:
-    //  https://developers.notion.com/reference/post-database-query#post-database-query-sort
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub property: Option<String>,
-    /// The name of the timestamp to sort against.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub timestamp: Option<DatabaseSortTimestamp>,
-    pub direction: SortDirection,
+#[serde(untagged)]
+pub enum DatabaseSort {
+    Property { property: String, direction: SortDirection },
+    Timestamp { timestamp: DatabaseSortTimestamp, direction: SortDirection }
+}
+
+impl DatabaseSort {
+    pub fn by_prop(property: String, direction: SortDirection) -> DatabaseSort {
+        DatabaseSort::Property { property, direction }
+    }
+    pub fn by_created_time(direction: SortDirection) -> DatabaseSort {
+        DatabaseSort::Timestamp { timestamp: DatabaseSortTimestamp::CreatedTime, direction}
+    }
+    pub fn by_last_edited_time(direction: SortDirection) -> DatabaseSort {
+        DatabaseSort::Timestamp { timestamp: DatabaseSortTimestamp::LastEditedTime, direction }
+    }
 }
 
 #[derive(Serialize, Debug, Eq, PartialEq, Default, Clone)]
