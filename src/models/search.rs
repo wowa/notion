@@ -261,7 +261,7 @@ pub enum PropertyCondition {
 
 pub type TimestampFilterProperty = DatabaseSortTimestamp;
 
-#[derive(Serialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Debug, Eq, PartialEq, Clone)]
 #[serde(untagged)]
 pub enum FilterCondition {
     Property {
@@ -279,38 +279,37 @@ pub enum FilterCondition {
     Or { or: Vec<FilterCondition> },
 }
 
-
 impl FilterCondition {
-    pub fn created_time(date_condition :DateCondition) -> FilterCondition {
-        FilterCondition::Timestamp { condition:  PropertyTimestampCondition::CreatedTime { created_time: date_condition }
-         }
-    }
-}
-
-impl Clone for FilterCondition {
-    fn clone(&self)  -> Self {
-        match self {
-            FilterCondition::Property { property, condition } => FilterCondition::Property { property: property.clone(), condition: condition.clone() },
-            FilterCondition::Timestamp { condition } => FilterCondition::Timestamp { condition: condition.clone() },
-            FilterCondition::And { and } => todo!(),
-            FilterCondition::Or { or } => todo!(),
+    pub fn created_time(date_condition: DateCondition) -> FilterCondition {
+        FilterCondition::Timestamp {
+            condition: PropertyTimestampCondition::CreatedTime {
+                created_time: date_condition,
+            },
         }
     }
 }
 
-#[derive(Serialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Debug, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 #[serde(tag = "timestamp")]
 pub enum PropertyTimestampCondition {
-    CreatedTime{created_time: DateCondition},
-    LastEditedTime{last_edited_time: DateCondition},
+    CreatedTime { created_time: DateCondition },
+    LastEditedTime { last_edited_time: DateCondition },
 }
 
 impl PropertyTimestampCondition {
     pub fn clone(&self) -> Self {
         match self {
-            PropertyTimestampCondition::CreatedTime { created_time } => PropertyTimestampCondition::CreatedTime { created_time: created_time.clone() },
-            PropertyTimestampCondition::LastEditedTime { last_edited_time } => PropertyTimestampCondition::LastEditedTime { last_edited_time: last_edited_time.clone() },
+            PropertyTimestampCondition::CreatedTime { created_time } => {
+                PropertyTimestampCondition::CreatedTime {
+                    created_time: created_time.clone(),
+                }
+            }
+            PropertyTimestampCondition::LastEditedTime { last_edited_time } => {
+                PropertyTimestampCondition::LastEditedTime {
+                    last_edited_time: last_edited_time.clone(),
+                }
+            }
         }
     }
 }
@@ -325,19 +324,37 @@ pub enum DatabaseSortTimestamp {
 #[derive(Serialize, Debug, Eq, PartialEq, Clone)]
 #[serde(untagged)]
 pub enum DatabaseSort {
-    Property { property: String, direction: SortDirection },
-    Timestamp { timestamp: DatabaseSortTimestamp, direction: SortDirection }
+    Property {
+        property: String,
+        direction: SortDirection,
+    },
+    Timestamp {
+        timestamp: DatabaseSortTimestamp,
+        direction: SortDirection,
+    },
 }
 
 impl DatabaseSort {
-    pub fn by_prop(property: String, direction: SortDirection) -> DatabaseSort {
-        DatabaseSort::Property { property, direction }
+    pub fn by_prop(
+        property: String,
+        direction: SortDirection,
+    ) -> DatabaseSort {
+        DatabaseSort::Property {
+            property,
+            direction,
+        }
     }
     pub fn by_created_time(direction: SortDirection) -> DatabaseSort {
-        DatabaseSort::Timestamp { timestamp: DatabaseSortTimestamp::CreatedTime, direction}
+        DatabaseSort::Timestamp {
+            timestamp: DatabaseSortTimestamp::CreatedTime,
+            direction,
+        }
     }
     pub fn by_last_edited_time(direction: SortDirection) -> DatabaseSort {
-        DatabaseSort::Timestamp { timestamp: DatabaseSortTimestamp::LastEditedTime, direction }
+        DatabaseSort::Timestamp {
+            timestamp: DatabaseSortTimestamp::LastEditedTime,
+            direction,
+        }
     }
 }
 
@@ -352,7 +369,10 @@ pub struct DatabaseQuery {
 }
 
 impl Pageable for DatabaseQuery {
-    fn start_from(self, starting_point: Option<PagingCursor>) -> Self {
+    fn start_from(
+        self,
+        starting_point: Option<PagingCursor>,
+    ) -> Self {
         DatabaseQuery {
             paging: Some(Paging {
                 start_cursor: starting_point,
