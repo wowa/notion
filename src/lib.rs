@@ -12,9 +12,6 @@ use tracing::Instrument;
 pub mod ids;
 pub mod models;
 
-// NEVER COMMIT THIS LINE TO REPOSITORY
-pub mod wowa;
-
 pub use chrono;
 
 const NOTION_API_VERSION: &str = "2022-06-28";
@@ -108,7 +105,7 @@ impl NotionApi {
         let deserializer = &mut serde_json::Deserializer::from_str(&json);
         let result: Result<Object, _> = serde_path_to_error::deserialize(deserializer);
         if let Err(e) = result {
-            panic!("{} . path: {}", e, e.path().to_string());
+            panic!("{} . path: {}", e, e.path());
         }
         let result =
             serde_json::from_str(&json).map_err(|source| Error::JsonParseError { source })?;

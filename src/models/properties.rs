@@ -1,4 +1,3 @@
-use std::cmp::Ordering;
 
 use crate::models::text::RichText;
 use crate::models::users::User;
@@ -253,7 +252,6 @@ impl DateOrDateTime {
                     .unwrap(),
             ),
             DateOrDateTime::DateTime(date_time) => Some(*date_time),
-            _ => None,
         }
     }
 }
@@ -429,22 +427,6 @@ pub enum PropertyValue {
     },
 }
 
-impl PartialOrd for PropertyValue {
-    fn partial_cmp(
-        &self,
-        other: &Self,
-    ) -> Option<std::cmp::Ordering> {
-        match (self, other) {
-            (
-                &PropertyValue::Date { ref date, .. },
-                &PropertyValue::Date {
-                    date: ref date2, ..
-                },
-            ) => Some(Ordering::Equal),
-            _ => None,
-        }
-    }
-}
 
 /// TODO This is completely wrong.
 /// rename to RollupArrayValueProperties
