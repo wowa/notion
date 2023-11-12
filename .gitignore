@@ -11,3 +11,10 @@ Cargo.lock
 
 .api_token
 todo_config.toml
+
+
+
+
+
+# my own tests; do never merge it with remote
+wowa

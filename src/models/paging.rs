@@ -4,6 +4,15 @@ use serde::{Deserialize, Serialize};
 #[serde(transparent)]
 pub struct PagingCursor(String);
 
+impl std::fmt::Display for PagingCursor {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
 #[derive(Serialize, Debug, Eq, PartialEq, Default, Clone)]
 pub struct Paging {
     #[serde(skip_serializing_if = "Option::is_none")]

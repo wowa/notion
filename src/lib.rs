@@ -3,6 +3,7 @@ use crate::models::error::ErrorResponse;
 use crate::models::search::{DatabaseQuery, SearchRequest};
 use crate::models::{Block, Database, ListResponse, Object, Page};
 use ids::{AsIdentifier, PageId};
+use models::paging::Paging;
 use models::{PageCreateRequest, PageUpdateRequest};
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{header, Client, ClientBuilder, RequestBuilder};
@@ -10,6 +11,9 @@ use tracing::Instrument;
 
 pub mod ids;
 pub mod models;
+
+// NEVER COMMIT THIS LINE TO REPOSITORY
+pub mod wowa;
 
 pub use chrono;
 
@@ -95,11 +99,16 @@ impl NotionApi {
             .await
             .map_err(|source| Error::ResponseIoError { source })?;
 
-        tracing::debug!("JSON Response: {}", json);
+        // tracing::trace!("JSON Response: {}", json);
         #[cfg(test)]
         {
             dbg!(serde_json::from_str::<serde_json::Value>(&json)
                 .map_err(|source| Error::JsonParseError { source })?);
+        }
+        let deserializer = &mut serde_json::Deserializer::from_str(&json);
+        let result: Result<Object, _> = serde_path_to_error::deserialize(deserializer);
+        if let Err(e) = result {
+            panic!("{} . path: {}", e, e.path().to_string());
         }
         let result =
             serde_json::from_str(&json).map_err(|source| Error::JsonParseError { source })?;
@@ -248,10 +257,26 @@ impl NotionApi {
     pub async fn get_block_children<T: AsIdentifier<BlockId>>(
         &self,
         block_id: T,
+        paging: Paging,
     ) -> Result<ListResponse<Block>, Error> {
+        let query = {
+            [
+                paging.start_cursor.map(|s| format!("start_cursor={}", s)),
+                paging.page_size.map(|p| format!("page_size={}", p)),
+            ]
+            .iter()
+            .filter_map(|i| i.clone())
+            .collect::<Vec<String>>()
+            .join("&")
+        };
+        let query = if query.is_empty() {
+            query
+        } else {
+            format!("?{query}")
+        };
         let result = self
             .make_json_request(self.client.get(&format!(
-                "https://api.notion.com/v1/blocks/{block_id}/children",
+                "https://api.notion.com/v1/blocks/{block_id}/children{query}",
                 block_id = block_id.as_id()
             )))
             .await?;
